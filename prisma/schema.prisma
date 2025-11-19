@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model BookCache {
+  // bookId de Google Books como identificador único
+  bookId        String    @id @unique
+  title         String
+  author        String?   // Autores separados por coma (ej. 'Autor 1, Autor 2')
+  publisher     String?
+  publishedDate String?
+  pageCount     Int?      // Necesario para la estadística de Páginas Totales
+  categories    String?   // Géneros separados por coma (para la estadística de Géneros Favoritos)
+  thumbnailUrl  String?   // URL de la portada
+  cachedAt      DateTime  @default(now())
+
+  // Relaciones inversas (para joins en Prisma)
+  readingListItems ReadingList[]
+  readBookEntries  ReadBooks[]
+}
+
+model Usuario {
+  id            Int           @id @default(autoincrement())
+  nombre        String
+  email         String        @unique
+  contrasena    String
+  creadoEn      DateTime      @default(now())
+  busquedas     Busqueda[]
+  listaLectura  ReadingList[]
+  librosLeidos  ReadBooks[]
+}
+
+model Busqueda {
+  id            Int       @id @default(autoincrement())
+  termino       String
+  fecha         DateTime  @default(now())
+  usuario       Usuario   @relation(fields: [usuarioId], references: [id])
+  usuarioId     Int
+}
+
+// Libros que el usuario quiere leer
+model ReadingList {
+  id          Int       @id @default(autoincrement())
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id])
+  usuarioId   Int
+  bookId      String
+  prioridad   String    @default("media") 
+  notas       String?
+  creadoEn    DateTime  @default(now())
+
+  // Relación a BookCache (ahora podemos hacer joins)
+  book        BookCache @relation(fields: [bookId], references: [bookId])
+
+  @@unique([usuarioId, bookId]) 
+  @@index([usuarioId])
+}
+
+// Libros que el usuario ya leyó
+model ReadBooks {
+  id            Int       @id @default(autoincrement())
+  usuario       Usuario   @relation(fields: [usuarioId], references: [id])
+  usuarioId     Int
+  bookId        String
+  calificacion  Int?      
+  reseña        String?
+  fechaFinal    DateTime  @default(now())
+
+  // Relación a BookCache (ahora podemos hacer joins)
+  book          BookCache @relation(fields: [bookId], references: [bookId])
+
+  @@unique([usuarioId, bookId]) // Opcional: Evita que el mismo libro esté dos veces como leído
+  @@index([usuarioId])
+}
